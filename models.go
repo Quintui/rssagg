@@ -44,3 +44,39 @@ func databaseFeedToFeed(databaseFeed database.Feed) Feed {
 		AuthorID:  databaseFeed.AuthorID,
 	}
 }
+
+func databaseFeedsToFeeds(databaseFeeds []database.Feed) []Feed {
+	feeds := make([]Feed, len(databaseFeeds))
+	for _, feed := range databaseFeeds {
+		feeds = append(feeds, databaseFeedToFeed(feed))
+	}
+	return feeds
+}
+
+type FeedFollow struct {
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"user_id"`
+	FeedID    uuid.UUID `json:"feed_id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func databaseFeedFollowToFeedFollow(databaseFeedFollow database.FeedFollow) FeedFollow {
+	return FeedFollow{
+		ID:        databaseFeedFollow.ID,
+		UserID:    databaseFeedFollow.UserID,
+		FeedID:    databaseFeedFollow.FeedID,
+		CreatedAt: databaseFeedFollow.CreatedAt,
+		UpdatedAt: databaseFeedFollow.UpdatedAt,
+	}
+}
+
+func databaseFeedFollowsToFeedFollows(databaseFeedFollows []database.FeedFollow) []FeedFollow {
+	feedFollows := make([]FeedFollow, len(databaseFeedFollows))
+
+	for _, feedFollow := range databaseFeedFollows {
+		feedFollows = append(feedFollows, databaseFeedFollowToFeedFollow(feedFollow))
+	}
+
+	return feedFollows
+}
