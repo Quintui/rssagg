@@ -17,6 +17,9 @@ type apiConfig struct {
 	DB *database.Queries
 }
 
+const SCRAPING_CONCURRENCY = 10
+const SCRAPING_INTERVAL = 60
+
 func main() {
 	godotenv.Load()
 	portString := os.Getenv("PORT")
@@ -37,9 +40,13 @@ func main() {
 		log.Fatal("Something went wrong during connection to database: ", err.Error())
 	}
 
+	db := database.New(conn)
+
 	apiCfg := apiConfig{
-		DB: database.New(conn),
+		DB: db,
 	}
+
+	startScraping(db, SCRAPING_CONCURRENCY, SCRAPING_INTERVAL)
 
 	router := chi.NewRouter()
 
@@ -65,6 +72,8 @@ func main() {
 
 	v1Router.Get("/feed_follows", apiCfg.authMiddleware(apiCfg.handlerGetUserFollowedFeeds))
 	v1Router.Post("/feed_follows", apiCfg.authMiddleware(apiCfg.handlerCreateFeedFollow))
+
+	v1Router.Get("/posts", apiCfg.authMiddleware(apiCfg.handlerUserPosts))
 
 	srv := &http.Server{
 		Addr:    ":" + portString,

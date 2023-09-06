@@ -2,13 +2,16 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/xml"
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/quintui/rssagg/internal/database"
 )
 
@@ -47,13 +50,45 @@ func scrapeFeed(db *database.Queries, wg *sync.WaitGroup, feed database.Feed) {
 	}
 
 	// Implement data parsing
-	_, err = fetchFeed(feed.Url)
+
+	feedData, err := fetchFeed(feed.Url)
+
+	for _, item := range feedData.Channel.Item {
+		publishedAt := sql.NullTime{}
+		if pubAt, err := time.Parse(time.RFC1123Z, item.PubDate); err == nil {
+			publishedAt = sql.NullTime{
+				Time:  pubAt,
+				Valid: true,
+			}
+		}
+		_, err := db.CreatePost(context.Background(), database.CreatePostParams{
+			ID:    uuid.New(),
+			Title: item.Title,
+			Url:   item.Link,
+			Description: sql.NullString{
+				String: item.Description,
+				Valid:  true,
+			},
+			PublishedAt: publishedAt,
+			FeedID:      feed.ID,
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		})
+
+		if err != nil {
+			if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+				continue
+			}
+			log.Printf("Could not create post: %s", err)
+			continue
+		}
+	}
 
 	if err != nil {
 		log.Printf("Could not fetch feed %s: %s", feed.Name, err)
 	}
 
-	log.Printf("Feed %s fetched", feed.Name)
+	log.Printf("Feed %s collected, %v posts found", feed.Name, len(feedData.Channel.Item))
 
 }
 
